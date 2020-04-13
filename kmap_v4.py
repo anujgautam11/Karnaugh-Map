@@ -646,10 +646,12 @@ def solve_kmap(n, e):
     Out_str = wordify(minterms.result, max_mt)
     print(Out_str)
 
+	## Check outputs and identify groups
+    
     if max(mint)<16:
-        ## Output check
         global g
         g = []
+        ## Output check
         if type(y[0]) != int:
             for text in y:
                 # print(text)
@@ -720,6 +722,7 @@ def solve_kmap(n, e):
         create_kmap(values, g)
 	
     else:
+        group.set("K-MAP and groups not available!! Available only for 4 variables!!")
         Y = Out_str
     return Y
 
