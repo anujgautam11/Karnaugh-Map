@@ -84,7 +84,7 @@ def remove_redundant_terms(terms, not_cares):
     while i < len(terms):
         case1 = terms[i].source
         case2 = set(terms[i].source).issubset(range(len(set(not_cares))))
-        if not case1 or case2:
+        if (case1 and case2):
             terms.pop(i)
             i -= 1
         i += 1
@@ -174,7 +174,9 @@ class Minterms(object):
 
         minterms_new = deepcopy(minterms_old)
         minterms = remove_repeated_sources(minterms_new, minterms_old)
+        print(minterms, self.not_cares)
         self.result = remove_redundant_terms(minterms, self.not_cares)
+        # self.result = remove_redundant_terms(minterms, not_cares)
 
 
 def minFunc(numVar, stringIn):
@@ -560,26 +562,53 @@ def minFunc(numVar, stringIn):
 	return (stringOut, z)  # returning the K map value back
 
 
-def wordify(result):
-    w = "ABCD"
+def wordify(result, max_mt):
+    if max_mt<16:
+        w = "ABCD"
+        n = 4
+    elif max_mt<2**5:
+        w = "ABCDE"
+        n = 5
+    elif max_mt<2**6:
+        w = "ABCDEF"
+        n = 6
+    elif max_mt<2**7:
+        w = "ABCDEFG"
+        n = 7
+    elif max_mt<2**8:
+        w = "ABCDEFGH"
+        n = 8
+
     words = ""
+    # print(n)
     for terms in result:
-        for i in range(4):
-            if terms.term[i] == '0':
-                words += str(w[i] + "\'")
-            elif terms.term[i] == '1':
-                words += str(w[i])
-            elif terms.term[i] == '*':
-                pass
+        # print(terms.term)
+        for i in range(n):
+            if len(terms.term) != 0:
+                if terms.term[i] == '0':
+                    words += str(w[i] + "\'")
+                elif terms.term[i] == '1':
+                    words += str(w[i])
+                elif terms.term[i] == '*':
+                    pass
         words += " + "
     words = words[:-3]
     return words
 
 
-def minterms_to_bin(mt):
+def minterms_to_bin(mt, max_mt):
     str_mt = []
     for m in mt:
-        str_mt.append(np.binary_repr(m, width=4))
+        if max_mt<16:
+            str_mt.append(np.binary_repr(m, width=4))
+        elif max_mt<2**5:
+            str_mt.append(np.binary_repr(m, width=5))
+        elif max_mt<2**6:
+            str_mt.append(np.binary_repr(m, width=6))
+        elif max_mt<2**7:
+            str_mt.append(np.binary_repr(m, width=7))
+        elif max_mt<2**8:
+            str_mt.append(np.binary_repr(m, width=8))
     return str_mt
 
 
@@ -587,9 +616,11 @@ def solve_kmap(n, e):
 
     mt = [int(i) for i in e[0].strip().split()]
     dc = [int(i) for i in e[1].strip().split()]
+    mint = mt+dc
+    max_mt = max(mint)
 
-    str_terms = minterms_to_bin(mt)
-    terms_not_care = minterms_to_bin(dc)
+    str_terms = minterms_to_bin(mt, max_mt)
+    terms_not_care = minterms_to_bin(dc, max_mt)
 
     t_minterms = [Term(term) for term in str_terms]
     not_cares = [Term(term) for term in terms_not_care]
@@ -601,7 +632,7 @@ def solve_kmap(n, e):
         elif i in dc:
             values[i] = 'x'
 
-    if Solve == True:
+    if Solve == True and max(mint)<16:
         if len(e[1]) == 0:
             mtdt = "(" + ''.join([str(elem) for elem in e[0]]) + ")" + "d-"
         else:
@@ -609,10 +640,13 @@ def solve_kmap(n, e):
                 "d(" + ''.join([str(elem) for elem in e[1]]) + ")"
         Y, y = minFunc(str(n), mtdt)
 
-        minterms = Minterms(t_minterms, not_cares=not_cares)
-        minterms.simplify()
-        Out_str = wordify(minterms.result)
+    minterms = Minterms(t_minterms, not_cares=not_cares)
+    minterms.simplify()
+    # print(minterms.result, minterms)
+    Out_str = wordify(minterms.result, max_mt)
+    print(Out_str)
 
+    if max(mint)<16:
         ## Output check
         global g
         g = []
@@ -627,7 +661,8 @@ def solve_kmap(n, e):
         for gi in g:
             for elem in gi:
                 f_count[elem]+=1
-    
+                
+		## making sure that there are no unwanted groupings
         for gi in g:
             for i in range(len(gi)):
                 if f_count[gi[i]]>=len(gi):
@@ -648,7 +683,7 @@ def solve_kmap(n, e):
         print(flag)
         
         if flag == False:
-        	Y = Out_str
+        	pass
         if flag == True and mt != [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]:
             Z = ""
             i = 0
@@ -681,9 +716,11 @@ def solve_kmap(n, e):
         else:
             group.set(y)
             g = [y]
-       
-
-    create_kmap(values, g)
+        
+        create_kmap(values, g)
+	
+    else:
+        Y = Out_str
     return Y
 
 
@@ -795,9 +832,7 @@ def activate_fetch():
     Solve = True
     n = 4  # default 4 variables
     e = fetch(ents)
-    e.append(n)  # e[2] = 4, uncomment below for user input
-    # if e[2] != "":
-    #     n = int(e[2])
+    e.append(n)  
     Y = solve_kmap(n, e)
     la.set(Y)  # Set output on Screen
     return Y
